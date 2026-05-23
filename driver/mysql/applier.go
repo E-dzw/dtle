@@ -905,36 +905,34 @@ func (a *Applier) ApplyEventQueries(entry *common.DumpEntry) (err error) {
 	//check virtual column on dest table
 	var ColumnMapTpVirtualIndex []int
 	var insertColumns []string
-	orignalColumns, err := base.GetTableColumns(conn, entry.TableSchema, entry.TableName)
-	if err != nil {
-		a.logger.Error("err get dest table column info", "err", err)
-		return err
-	}
-	err = base.ApplyColumnTypes(conn, entry.TableSchema, entry.TableName, orignalColumns)
-	if err != nil {
-		a.logger.Error("err apply dest table column type", "err", err)
-		return err
-	}
-
-	if len(entry.ColumnMapTo) > 0 {
-		ColumnMapTpVirtualIndex = make([]int, len(entry.ColumnMapTo))
-		for i, col := range entry.ColumnMapTo {
-			destCol := orignalColumns.GetColumn(col)
-			if destCol != nil && destCol.IsVirtual {
-				ColumnMapTpVirtualIndex[i] = 1
-				continue
+	if len(entry.ValuesX) != 0 {
+		orignalColumns, err := base.GetTableColumns(conn, entry.TableSchema, entry.TableName)
+		if err != nil {
+			a.logger.Error("err get dest table column info", "err", err)
+			return err
+		}
+		if len(entry.ColumnMapTo) > 0 {
+			ColumnMapTpVirtualIndex = make([]int, len(entry.ColumnMapTo))
+			for i, col := range entry.ColumnMapTo {
+				destCol := orignalColumns.GetColumn(col)
+				if destCol != nil && destCol.IsVirtual {
+					ColumnMapTpVirtualIndex[i] = 1
+					continue
+				}
+				insertColumns = append(insertColumns, col)
 			}
-			insertColumns = append(insertColumns, col)
+		} else {
+			ColumnMapTpVirtualIndex = make([]int, len(orignalColumns.Columns))
+			for i, col := range orignalColumns.Columns {
+				if col.IsVirtual {
+					ColumnMapTpVirtualIndex[i] = 1
+					continue
+				}
+				insertColumns = append(insertColumns, col.RawName)
+			}
 		}
 	} else {
-		ColumnMapTpVirtualIndex = make([]int, len(orignalColumns.Columns))
-		for i, col := range orignalColumns.Columns {
-			if col.IsVirtual {
-				ColumnMapTpVirtualIndex[i] = 1
-				continue
-			}
-			insertColumns = append(insertColumns, col.RawName)
-		}
+		a.logger.Info("data entry is create sql")
 	}
 
 	execQuery := func(query string) error {

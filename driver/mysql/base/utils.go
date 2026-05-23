@@ -100,6 +100,10 @@ func GetTableColumns(db usql.QueryAble, databaseName, tableName string) (*common
 				aColumn.Default = d.String
 			}
 		}
+		extra := strings.ToUpper(rowMap.GetString("Extra"))
+		if strings.Contains(extra, "VIRTUAL") || strings.Contains(extra, "GENERATED") {
+			aColumn.IsVirtual = true
+		}
 		aColumn.EscapedName = umconf.EscapeName(aColumn.RawName)
 		columns = append(columns, aColumn)
 		return nil
